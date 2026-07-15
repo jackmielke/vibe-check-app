@@ -1,13 +1,30 @@
 {
   "expo": {
-    "name": "my-app",
+    "name": "Vibe",
     "slug": "my-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-font",
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Vibe needs the camera to check your selfie energy.",
+          "photosPermission": "Vibe needs your photos so you can check an existing shot."
+        }
+      ]
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jackmielke.myapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Vibe needs the camera to check your selfie energy.",
+        "NSPhotoLibraryUsageDescription": "Vibe needs your photos so you can check an existing shot."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +37,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3e80a1cb-5a36-4ff2-af8e-9e0e56f5283d"
+      }
+    },
+    "owner": "jackmielke"
   }
 }
