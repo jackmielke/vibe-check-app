@@ -1,124 +1,83 @@
-create extension if not exists "pgcrypto";
+-- Live schema of the "Vibe Check" Supabase project (hkakpvfytmuqpjympmwx).
+-- This file documents what is deployed; change it via migrations, not by hand.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  username text unique,
-  display_name text,
-  avatar_url text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.vibe_checks (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  score integer not null check (score between 0 and 100),
-  analysis text not null,
-  factors jsonb not null default '[]'::jsonb,
-  photo_path text,
-  visibility text not null default 'private' check (visibility in ('private', 'friends', 'public')),
+  display_name text not null default 'anon',
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.vibe_reactions (
+create table if not exists public.vibes (
   id uuid primary key default gen_random_uuid(),
-  vibe_check_id uuid not null references public.vibe_checks(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
-  reaction text not null check (char_length(reaction) between 1 and 24),
-  created_at timestamptz not null default now(),
-  unique (vibe_check_id, user_id)
+  score integer not null check (score >= 0 and score <= 100),
+  analysis text not null default '',
+  factors jsonb not null default '[]'::jsonb,
+  photo_path text,
+  created_at timestamptz not null default now()
 );
 
-create table if not exists public.follows (
-  follower_id uuid not null references public.profiles(id) on delete cascade,
-  following_id uuid not null references public.profiles(id) on delete cascade,
+create table if not exists public.reports (
+  id uuid primary key default gen_random_uuid(),
+  vibe_id uuid not null references public.vibes(id),
+  reporter_id uuid not null references auth.users(id),
+  reason text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.blocks (
+  blocker_id uuid not null references auth.users(id),
+  blocked_id uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
-  primary key (follower_id, following_id),
-  check (follower_id <> following_id)
+  primary key (blocker_id, blocked_id)
 );
 
 alter table public.profiles enable row level security;
-alter table public.vibe_checks enable row level security;
-alter table public.vibe_reactions enable row level security;
-alter table public.follows enable row level security;
+alter table public.vibes enable row level security;
+alter table public.reports enable row level security;
+alter table public.blocks enable row level security;
 
-create policy "profiles are readable"
+create policy "profiles readable by all"
   on public.profiles for select
   using (true);
 
-create policy "users manage their own profile"
-  on public.profiles for all
+create policy "insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
+create policy "update own profile"
+  on public.profiles for update
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
-create policy "users read visible vibe checks"
-  on public.vibe_checks for select
-  using (
-    visibility = 'public'
-    or user_id = auth.uid()
-    or (
-      visibility = 'friends'
-      and exists (
-        select 1
-        from public.follows f1
-        join public.follows f2
-          on f2.follower_id = f1.following_id
-         and f2.following_id = f1.follower_id
-        where f1.follower_id = auth.uid()
-          and f1.following_id = vibe_checks.user_id
-      )
-    )
-  );
-
-create policy "users create their own vibe checks"
-  on public.vibe_checks for insert
-  with check (auth.uid() = user_id);
-
-create policy "users update their own vibe checks"
-  on public.vibe_checks for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-create policy "users delete their own vibe checks"
-  on public.vibe_checks for delete
-  using (auth.uid() = user_id);
-
-create policy "users read reactions on visible vibe checks"
-  on public.vibe_reactions for select
-  using (
-    exists (
-      select 1
-      from public.vibe_checks vc
-      where vc.id = vibe_reactions.vibe_check_id
-        and (
-          vc.visibility = 'public'
-          or vc.user_id = auth.uid()
-          or (
-            vc.visibility = 'friends'
-            and exists (
-              select 1
-              from public.follows f1
-              join public.follows f2
-                on f2.follower_id = f1.following_id
-               and f2.following_id = f1.follower_id
-              where f1.follower_id = auth.uid()
-                and f1.following_id = vc.user_id
-            )
-          )
-        )
-    )
-  );
-
-create policy "users manage their own reactions"
-  on public.vibe_reactions for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-create policy "users read follows"
-  on public.follows for select
+create policy "vibes readable by all"
+  on public.vibes for select
   using (true);
 
-create policy "users manage their outgoing follows"
-  on public.follows for all
-  using (auth.uid() = follower_id)
-  with check (auth.uid() = follower_id);
+create policy "insert own vibe"
+  on public.vibes for insert
+  with check (auth.uid() = user_id);
+
+create policy "delete own vibe"
+  on public.vibes for delete
+  using (auth.uid() = user_id);
+
+create policy "read own reports"
+  on public.reports for select
+  using (auth.uid() = reporter_id);
+
+create policy "insert own report"
+  on public.reports for insert
+  with check (auth.uid() = reporter_id);
+
+create policy "read own blocks"
+  on public.blocks for select
+  using (auth.uid() = blocker_id);
+
+create policy "insert own block"
+  on public.blocks for insert
+  with check (auth.uid() = blocker_id);
+
+create policy "delete own block"
+  on public.blocks for delete
+  using (auth.uid() = blocker_id);

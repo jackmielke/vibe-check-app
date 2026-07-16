@@ -3,6 +3,7 @@ import {
   Animated,
   Easing,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -22,8 +23,25 @@ import { colors } from './src/theme';
 import { analyzingLines } from './src/vibe/copy';
 import { analyzeVibeAsync } from './src/vibe/engine';
 import type { VibeResult } from './src/vibe/types';
+import {
+  fetchFeed,
+  shareVibe,
+  timeAgo,
+  type FeedItem,
+  type ShareOutcome,
+} from './src/social/api';
 
-type Screen = 'home' | 'analyzing' | 'result';
+type Screen = 'home' | 'analyzing' | 'result' | 'feed';
+type ShareState = 'idle' | 'sharing' | ShareOutcome;
+
+const shareLabels: Record<ShareState, string> = {
+  idle: 'Share to the feed',
+  sharing: 'Sharing…',
+  shared: 'On the feed',
+  offline: 'Feed is offline',
+  'auth-unavailable': 'Feed opens soon',
+  failed: 'Couldn’t share — try again',
+};
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
@@ -31,6 +49,9 @@ export default function App() {
   const [result, setResult] = useState<VibeResult | null>(null);
   const [analyzeCopy, setAnalyzeCopy] = useState(analyzingLines()[0]!);
   const [busy, setBusy] = useState(false);
+  const [shareState, setShareState] = useState<ShareState>('idle');
+  const [feed, setFeed] = useState<FeedItem[] | null>(null);
+  const [feedLoading, setFeedLoading] = useState(false);
 
   const brandOpacity = useRef(new Animated.Value(0)).current;
   const brandY = useRef(new Animated.Value(28)).current;
@@ -106,6 +127,7 @@ export default function App() {
   const runCheck = useCallback(
     async (asset: ImagePicker.ImagePickerAsset) => {
       setBusy(true);
+      setShareState('idle');
       setPhotoUri(asset.uri);
       setScreen('analyzing');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -161,8 +183,33 @@ export default function App() {
     Haptics.selectionAsync();
     setResult(null);
     setPhotoUri(null);
+    setShareState('idle');
     setScreen('home');
   }, []);
+
+  const share = useCallback(async () => {
+    if (!result || shareState === 'sharing' || shareState === 'shared') return;
+    setShareState('sharing');
+    Haptics.selectionAsync();
+    const outcome = await shareVibe(result);
+    setShareState(outcome);
+    if (outcome === 'shared') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [result, shareState]);
+
+  const openFeed = useCallback(async () => {
+    Haptics.selectionAsync();
+    setScreen('feed');
+    setFeedLoading(true);
+    setFeed(await fetchFeed());
+    setFeedLoading(false);
+  }, []);
+
+  const closeFeed = useCallback(() => {
+    Haptics.selectionAsync();
+    setScreen(result ? 'result' : 'home');
+  }, [result]);
 
   if (!fontsLoaded) {
     return <View style={styles.boot} />;
@@ -202,6 +249,7 @@ export default function App() {
             <Animated.View style={[styles.actions, { opacity: contentOpacity }]}>
               <UnderlineButton label="Take a selfie" onPress={takeSelfie} />
               <UnderlineButton label="Choose a photo" onPress={choosePhoto} muted />
+              <UnderlineButton label="See the feed" onPress={openFeed} muted />
             </Animated.View>
           </View>
         )}
@@ -243,7 +291,60 @@ export default function App() {
               ))}
             </View>
 
-            <UnderlineButton label="Check again" onPress={reset} />
+            <View style={styles.resultActions}>
+              <UnderlineButton
+                label={shareLabels[shareState]}
+                onPress={share}
+                muted={shareState !== 'idle' && shareState !== 'failed'}
+              />
+              <UnderlineButton label="See the feed" onPress={openFeed} muted />
+              <UnderlineButton label="Check again" onPress={reset} muted />
+            </View>
+          </View>
+        )}
+
+        {screen === 'feed' && (
+          <View style={styles.feed}>
+            <Text style={styles.brandSmall}>VIBE</Text>
+            <Text style={styles.feedTitle}>The feed</Text>
+
+            <ScrollView
+              style={styles.feedList}
+              contentContainerStyle={styles.feedListContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {feedLoading && (
+                <Text style={styles.feedEmpty}>Reading the room…</Text>
+              )}
+              {!feedLoading && feed === null && (
+                <Text style={styles.feedEmpty}>
+                  The feed isn’t reachable right now.
+                </Text>
+              )}
+              {!feedLoading && feed !== null && feed.length === 0 && (
+                <Text style={styles.feedEmpty}>
+                  Nothing here yet. Share the first vibe.
+                </Text>
+              )}
+              {!feedLoading &&
+                feed?.map((item) => (
+                  <View key={item.id} style={styles.feedRow}>
+                    <Text style={styles.feedScore}>{item.score}</Text>
+                    <View style={styles.feedBody}>
+                      <Text style={styles.feedMeta}>
+                        {item.mine ? 'you' : item.displayName} ·{' '}
+                        {timeAgo(item.createdAt)}
+                      </Text>
+                      <Text style={styles.feedAnalysis}>{item.analysis}</Text>
+                    </View>
+                  </View>
+                ))}
+            </ScrollView>
+
+            <UnderlineButton
+              label={result ? 'Back to result' : 'Back'}
+              onPress={closeFeed}
+            />
           </View>
         )}
       </SafeAreaView>
@@ -389,6 +490,66 @@ const styles = StyleSheet.create({
   fill: {
     height: 2,
     backgroundColor: colors.cream,
+  },
+  resultActions: {
+    gap: 14,
+  },
+  feed: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 18,
+    paddingBottom: 40,
+    gap: 10,
+  },
+  feedTitle: {
+    fontFamily: 'InstrumentSerif_400Regular_Italic',
+    fontSize: 30,
+    color: colors.cream,
+    marginBottom: 6,
+  },
+  feedList: {
+    flex: 1,
+  },
+  feedListContent: {
+    gap: 22,
+    paddingBottom: 24,
+  },
+  feedEmpty: {
+    fontFamily: 'InstrumentSerif_400Regular_Italic',
+    fontSize: 20,
+    lineHeight: 28,
+    color: colors.creamMuted,
+    marginTop: 12,
+  },
+  feedRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'flex-start',
+  },
+  feedScore: {
+    fontFamily: 'Syne_800ExtraBold',
+    fontSize: 34,
+    lineHeight: 38,
+    color: colors.cream,
+    minWidth: 54,
+  },
+  feedBody: {
+    flex: 1,
+    gap: 4,
+    paddingTop: 2,
+  },
+  feedMeta: {
+    fontFamily: 'Syne_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.3,
+    textTransform: 'uppercase',
+    color: colors.creamMuted,
+  },
+  feedAnalysis: {
+    fontFamily: 'InstrumentSerif_400Regular_Italic',
+    fontSize: 17,
+    lineHeight: 23,
+    color: colors.creamSoft,
   },
   cta: {
     alignSelf: 'flex-start',

@@ -43,14 +43,13 @@ Create `.env` from `.env.example` and fill in:
 
 Those public Expo variables are expected for mobile clients. The app should rely on Supabase Row Level Security for privacy and authorization.
 
-The draft schema lives in `supabase/schema.sql`. It covers:
+The live schema is documented in `supabase/schema.sql` (deployed to the "Vibe Check" Supabase project). It covers:
 
-- profiles
-- vibe check posts
-- reactions
-- follows
+- profiles (anonymous auth + generated display names)
+- vibes (the shared feed)
+- reports and blocks (safety, required for App Store UGC review)
 
-This keeps the first social version simple: sign in, post a vibe result, react to friends, and build a feed.
+The first social version is intentionally simple: check your vibe, share the score and analysis to a global feed, read the room. Anonymous sign-ins must be enabled in the Supabase dashboard (Authentication → Sign In / Providers) for sharing to work.
 
 ## App Store Prep
 
