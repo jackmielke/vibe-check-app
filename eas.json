@@ -22,7 +22,10 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "6791011083"
+        "ascAppId": "6791011083",
+        "ascApiKeyPath": "/Users/jackmielke/.appstoreconnect/private_keys/AuthKey_D64LNK6B96.p8",
+        "ascApiKeyId": "D64LNK6B96",
+        "ascApiKeyIssuerId": "30502701-dad4-4788-9777-3a7c61beeac5"
       }
     }
   }
