@@ -12,11 +12,12 @@ import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { useFonts, Syne_700Bold, Syne_800ExtraBold } from '@expo-google-fonts/syne';
-import {
-  InstrumentSerif_400Regular,
-  InstrumentSerif_400Regular_Italic,
-} from '@expo-google-fonts/instrument-serif';
+import { useFonts } from 'expo-font';
+// Per-weight imports: the package roots require() every weight, so importing
+// from them ships fonts the app never renders.
+import { Syne_700Bold } from '@expo-google-fonts/syne/700Bold';
+import { Syne_800ExtraBold } from '@expo-google-fonts/syne/800ExtraBold';
+import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif/400Regular_Italic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Atmosphere } from './src/components/Atmosphere';
 import { colors } from './src/theme';
@@ -62,7 +63,6 @@ export default function App() {
   const [fontsLoaded] = useFonts({
     Syne_700Bold,
     Syne_800ExtraBold,
-    InstrumentSerif_400Regular,
     InstrumentSerif_400Regular_Italic,
   });
 
