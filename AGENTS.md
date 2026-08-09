@@ -10,9 +10,23 @@ Use the local simulator for design work. Fast Refresh applies edits instantly.
 npx expo run:ios
 ```
 
-This needs an installed iOS simulator runtime. Xcode on its own does not include
-one — check with `xcrun simctl list runtimes`, and install with
-`xcodebuild -downloadPlatform iOS` if the list is empty.
+Two host requirements, both easy to misdiagnose from the build output:
+
+- **Xcode 26.4 or newer.** `expo-modules-jsi` and `@expo/expo-modules-macros-plugin`
+  ship `Package.swift` manifests declaring `swift-tools-version: 6.2`, which only
+  Xcode 26+ can resolve. On older Xcode the build dies with
+  `Could not resolve package dependencies: package 'apple' is using Swift tools
+  version 6.2.0 but the installed version is X` after several minutes of successful
+  compilation, which reads like a dependency problem rather than a toolchain one.
+- **An installed simulator runtime.** Xcode does not include one. Check with
+  `xcrun simctl list runtimes`; if empty, run `xcodebuild -downloadPlatform iOS`.
+
+EAS Build is unaffected by the first one — its images already run a new enough Xcode,
+so the cloud can build commits the local machine cannot.
+
+CocoaPods must be on a modern Ruby (`brew install cocoapods`), and `pod install`
+needs a UTF-8 locale — without `LANG=en_US.UTF-8` it fails with
+`Unicode Normalization not appropriate for ASCII-8BIT`.
 
 The simulator has no camera, so "Take a selfie" cannot be exercised there. Use
 "Choose a photo" against the simulator's photo library, or a dev client on a real

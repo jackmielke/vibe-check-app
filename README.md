@@ -25,7 +25,8 @@ npm run typecheck
 
 ### Local iOS loop (fastest — use this for design work)
 
-Requires an installed iOS simulator runtime. Xcode alone is not enough; download one with:
+Requires **Xcode 26.4+** (SDK 57 ships Swift packages needing Swift tools 6.2) and an
+installed simulator runtime. Xcode alone does not include a runtime; download one with:
 
 ```sh
 xcodebuild -downloadPlatform iOS
