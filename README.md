@@ -23,16 +23,58 @@ Run TypeScript checks with:
 npm run typecheck
 ```
 
-## TestFlight
+### Local iOS loop (fastest — use this for design work)
 
-The EAS project and App Store Connect app ID are already configured in `app.json` and `eas.json`.
+Requires an installed iOS simulator runtime. Xcode alone is not enough; download one with:
+
+```sh
+xcodebuild -downloadPlatform iOS
+```
+
+Then build and run natively. First run compiles the native project (a few minutes);
+after that Fast Refresh applies edits instantly.
+
+```sh
+npx expo run:ios
+```
+
+The simulator cannot use the camera. For camera work, use a dev client on a real
+device (see below) or the "Choose a photo" path with a photo added to the simulator.
+
+### Dev client on a real device
+
+One EAS build gets you a dev client on your iPhone. After it is installed, `npm run start`
+serves it over wifi with Fast Refresh — including the real camera.
+
+```sh
+npm run build:dev
+```
+
+## Shipping changes
+
+Two paths, depending on what changed.
+
+**JS, styling, copy, assets → EAS Update (seconds).** Publishes over the air to
+builds already on TestFlight. No rebuild, no Apple review.
+
+```sh
+npm run update:prod -- --message "tighten result spacing"
+```
+
+**Native changes → full build (hours).** Required when native dependencies, config
+plugins, permissions, icons, or the Expo SDK change.
 
 ```sh
 npm run build:ios
 npm run submit:ios
 ```
 
-Apple will process the build in App Store Connect. After processing, testers update through the same TestFlight app listing.
+`runtimeVersion` uses the `fingerprint` policy, so the runtime version is derived from
+the native project state automatically. If a change requires a new binary, the fingerprint
+changes and old builds simply stop receiving the update instead of crashing on it.
+
+Note: a build must contain `expo-updates` to receive updates at all. Builds 15 and
+earlier predate it, so the first build after this change is the one that unlocks OTA.
 
 ## Supabase Setup
 

@@ -43,6 +43,12 @@
         "projectId": "3e80a1cb-5a36-4ff2-af8e-9e0e56f5283d"
       }
     },
-    "owner": "jackmielke"
+    "owner": "jackmielke",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/3e80a1cb-5a36-4ff2-af8e-9e0e56f5283d"
+    }
   }
 }
