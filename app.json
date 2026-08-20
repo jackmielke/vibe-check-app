@@ -15,6 +15,13 @@
           "cameraPermission": "Vibe needs the camera to check your selfie energy.",
           "photosPermission": "Vibe needs your photos so you can check an existing shot."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Vibe needs the camera to check your selfie energy.",
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "ios": {

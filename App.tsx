@@ -22,6 +22,7 @@ import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Atmosphere } from './src/components/Atmosphere';
 import { LockedFeed } from './src/components/LockedFeed';
+import { VibeCamera, type Shot } from './src/components/VibeCamera';
 import { isUnlocked } from './src/social/gate';
 import { ThemeProvider, useTheme } from './src/themes/ThemeContext';
 import { themeOrder, themes, type Theme } from './src/themes';
@@ -39,7 +40,7 @@ import {
   type ShareOutcome,
 } from './src/social/api';
 
-type Screen = 'home' | 'analyzing' | 'result' | 'feed';
+type Screen = 'home' | 'camera' | 'analyzing' | 'result' | 'feed';
 type ShareState = 'idle' | 'sharing' | ShareOutcome;
 
 const shareLabels: Record<ShareState, string> = {
@@ -157,8 +158,15 @@ function VibeApp() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [screen, result, scoreScale, scoreOpacity]);
 
+  // Both the in-app camera and the library picker feed this, so it takes only
+  // the fields the scoring engine reads rather than a picker-shaped asset.
   const runCheck = useCallback(
-    async (asset: ImagePicker.ImagePickerAsset) => {
+    async (asset: {
+      uri: string;
+      width?: number | null;
+      height?: number | null;
+      fileSize?: number | null;
+    }) => {
       setBusy(true);
       setShareState('idle');
       setPhotoUri(asset.uri);
@@ -179,22 +187,18 @@ function VibeApp() {
     []
   );
 
-  const takeSelfie = useCallback(async () => {
+  const takeSelfie = useCallback(() => {
     if (busy) return;
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-    const shot = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.85,
-      cameraType: ImagePicker.CameraType.front,
-    });
-    if (!shot.canceled && shot.assets[0]) await runCheck(shot.assets[0]);
-  }, [busy, runCheck]);
+    Haptics.selectionAsync();
+    setScreen('camera');
+  }, [busy]);
+
+  const onCaptured = useCallback(
+    async (shot: Shot) => {
+      await runCheck({ uri: shot.uri, width: shot.width, height: shot.height });
+    },
+    [runCheck]
+  );
 
   const choosePhoto = useCallback(async () => {
     if (busy) return;
@@ -362,7 +366,11 @@ function VibeApp() {
         <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.photoScrim }]} />
       ) : null}
 
-      <SafeAreaView style={styles.safe}>
+      {screen === 'camera' && (
+        <VibeCamera onCapture={onCaptured} onClose={() => setScreen('home')} />
+      )}
+
+      <SafeAreaView style={styles.safe} pointerEvents={screen === 'camera' ? 'none' : 'auto'}>
         {screen === 'home' && (
           <View style={styles.hero}>
             <Animated.View
