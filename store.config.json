@@ -18,8 +18,8 @@
         ],
         "releaseNotes": "Four switchable looks, a redrawn icon, and reporting and blocking in the feed.",
         "promoText": "Snap a selfie. Get a score. Leave with a story.",
-        "privacyPolicyUrl": "REPLACE_WITH_PRIVACY_URL",
-        "supportUrl": "REPLACE_WITH_SUPPORT_URL"
+        "privacyPolicyUrl": "https://jackmielke.github.io/vibe-check-app/privacy.html",
+        "supportUrl": "https://jackmielke.github.io/vibe-check-app/"
       }
     },
     "categories": ["ENTERTAINMENT", "PHOTO_AND_VIDEO"],
