@@ -366,8 +366,12 @@ function VibeApp() {
         <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.photoScrim }]} />
       ) : null}
 
+      {/* Absolute so it covers the screen; as a flex sibling of SafeAreaView
+          the two would each take half the height. */}
       {screen === 'camera' && (
-        <VibeCamera onCapture={onCaptured} onClose={() => setScreen('home')} />
+        <View style={styles.cameraLayer}>
+          <VibeCamera onCapture={onCaptured} onClose={() => setScreen('home')} />
+        </View>
       )}
 
       <SafeAreaView style={styles.safe} pointerEvents={screen === 'camera' ? 'none' : 'auto'}>
@@ -612,6 +616,7 @@ function makeStyles(theme: Theme) {
     boot: { flex: 1, backgroundColor: theme.bg },
     root: { flex: 1, backgroundColor: theme.bg },
     photoWash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+    cameraLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 },
     safe: { flex: 1 },
 
     hero: {

@@ -20,7 +20,9 @@
         "expo-camera",
         {
           "cameraPermission": "Vibe needs the camera to check your selfie energy.",
-          "recordAudioAndroid": false
+          "recordAudioAndroid": false,
+          "microphonePermission": false,
+          "barcodeScannerEnabled": false
         }
       ],
       "expo-status-bar"
