@@ -22,7 +22,8 @@
           "cameraPermission": "Vibe needs the camera to check your selfie energy.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "ios": {
       "supportsTablet": true,
