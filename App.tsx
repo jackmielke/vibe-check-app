@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Easing,
   Pressable,
@@ -26,7 +27,10 @@ import { analyzingLines } from './src/vibe/copy';
 import { analyzeVibeAsync } from './src/vibe/engine';
 import type { VibeResult } from './src/vibe/types';
 import {
+  blockUser,
+  deleteVibe,
   fetchFeed,
+  reportVibe,
   shareVibe,
   timeAgo,
   type FeedItem,
@@ -233,6 +237,92 @@ function VibeApp() {
     setFeedLoading(false);
   }, []);
 
+  const refreshFeed = useCallback(async () => {
+    setFeedLoading(true);
+    setFeed(await fetchFeed());
+    setFeedLoading(false);
+  }, []);
+
+  const promptReport = useCallback((item: FeedItem) => {
+    const reasons = ['Offensive', 'Spam', 'Harassment', 'Something else'];
+    Alert.alert('Report this vibe', 'Tell us what is wrong so we can review it.', [
+      ...reasons.map((reason) => ({
+        text: reason,
+        onPress: async () => {
+          const outcome = await reportVibe(item.id, reason);
+          Alert.alert(
+            outcome === 'done' ? 'Reported' : 'Could not send that report',
+            outcome === 'done'
+              ? 'Thanks. We review reports within 24 hours.'
+              : 'Try again in a moment.'
+          );
+        },
+      })),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  }, []);
+
+  const confirmBlock = useCallback(
+    (item: FeedItem) => {
+      Alert.alert(
+        `Block ${item.displayName}?`,
+        'You will stop seeing their vibes in the feed.',
+        [
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: async () => {
+              const outcome = await blockUser(item.userId);
+              if (outcome === 'done') await refreshFeed();
+              else Alert.alert('Could not block that person. Try again.');
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    },
+    [refreshFeed]
+  );
+
+  // Apple's UGC rules want reporting and blocking reachable from the content
+  // itself, so every row carries the menu rather than hiding it in settings.
+  const openRowActions = useCallback(
+    (item: FeedItem) => {
+      Haptics.selectionAsync();
+
+      if (item.mine) {
+        Alert.alert('Your vibe', undefined, [
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              const outcome = await deleteVibe(item.id);
+              if (outcome === 'done') await refreshFeed();
+              else Alert.alert('Could not delete that. Try again.');
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
+        return;
+      }
+
+      Alert.alert(item.displayName, undefined, [
+        {
+          text: 'Report this vibe',
+          style: 'destructive',
+          onPress: () => promptReport(item),
+        },
+        {
+          text: 'Block this person',
+          style: 'destructive',
+          onPress: () => confirmBlock(item),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    },
+    [refreshFeed, promptReport, confirmBlock]
+  );
+
   const closeFeed = useCallback(() => {
     Haptics.selectionAsync();
     setScreen(result ? 'result' : 'home');
@@ -373,6 +463,17 @@ function VibeApp() {
                       </Text>
                       <Text style={styles.feedAnalysis}>{item.analysis}</Text>
                     </View>
+                    <Pressable
+                      onPress={() => openRowActions(item)}
+                      hitSlop={12}
+                      style={styles.rowMenu}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        item.mine ? 'Options for your vibe' : `Report or block ${item.displayName}`
+                      }
+                    >
+                      <Text style={styles.rowMenuGlyph}>•••</Text>
+                    </Pressable>
                   </View>
                 ))}
             </ScrollView>
@@ -608,6 +709,8 @@ function makeStyles(theme: Theme) {
       minWidth: 54,
     },
     feedBody: { flex: 1, gap: 4, paddingTop: 2 },
+    rowMenu: { paddingTop: 4, paddingLeft: 6 },
+    rowMenuGlyph: { ...theme.label, fontSize: 13, color: theme.textMuted },
     feedMeta: { ...theme.label, fontSize: 11, color: theme.textMuted },
     feedAnalysis: { ...theme.body, fontSize: 17, lineHeight: 23, color: theme.textSoft },
 
