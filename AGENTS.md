@@ -47,6 +47,28 @@ Do not switch this to `appVersion`.
 Builds 15 and earlier were compiled without `expo-updates` and can never receive
 an update.
 
+## What silently breaks OTA
+
+The `fingerprint` policy hashes more than native code. These are all inputs, and
+changing any of them moves the runtime version so installed builds stop matching:
+
+- `package.json` **dependencies and `scripts`** — even editing a script's flags
+- `app.json` and anything it references, including `assets/icon.png`
+- config plugins, and the autolinked native modules themselves
+
+A runtime mismatch is not an error. The update is simply withheld, so the symptom
+is "I published and nothing happened." Before publishing, check the update will
+reach the installed build:
+
+```sh
+npx @expo/fingerprint fingerprint:generate --platform ios
+eas build:list --platform ios --limit 1   # compare the Fingerprint field
+```
+
+If they differ, the change needs a build, not an update. Application source under
+`src/` and `App.tsx` is not an input — that is what makes JS and styling shippable
+over the air.
+
 # Fonts
 
 Import per-weight subpaths, not the package root:
