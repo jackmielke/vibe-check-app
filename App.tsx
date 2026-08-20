@@ -21,6 +21,8 @@ import { Syne_800ExtraBold } from '@expo-google-fonts/syne/800ExtraBold';
 import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif/400Regular_Italic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Atmosphere } from './src/components/Atmosphere';
+import { LockedFeed } from './src/components/LockedFeed';
+import { isUnlocked } from './src/social/gate';
 import { ThemeProvider, useTheme } from './src/themes/ThemeContext';
 import { themeOrder, themes, type Theme } from './src/themes';
 import { analyzingLines } from './src/vibe/copy';
@@ -436,7 +438,18 @@ function VibeApp() {
           </ScrollView>
         )}
 
-        {screen === 'feed' && (
+        {screen === 'feed' && !feedLoading && !isUnlocked(feed) && (
+          <LockedFeed
+            feed={feed}
+            onCheckVibe={() => {
+              setScreen('home');
+              takeSelfie();
+            }}
+            onBack={closeFeed}
+          />
+        )}
+
+        {screen === 'feed' && (feedLoading || isUnlocked(feed)) && (
           <View style={styles.feed}>
             <Text style={styles.brandSmall}>VIBE</Text>
             <Text style={styles.feedTitle}>The feed</Text>
