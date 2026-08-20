@@ -1,0 +1,42 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "info": {
+      "en-US": {
+        "title": "Vibe",
+        "subtitle": "Snap a selfie, get a score",
+        "description": "Vibe reads the room in your selfie and gives it a score out of 100, with a short written take and the five factors behind it: lighting, smile, energy, framing, and charisma.\n\nScoring happens entirely on your device. Your photo is never uploaded.\n\nShare a result to the public feed if you want to see how your read compares, or keep it to yourself. Four looks are built in — Field, Real, Neo, and Meme — so the app can match your mood.\n\nNo account. No email. No password.",
+        "keywords": [
+          "selfie",
+          "vibe",
+          "score",
+          "photo",
+          "mood",
+          "fun",
+          "camera",
+          "rating"
+        ],
+        "releaseNotes": "Four switchable looks, a redrawn icon, and reporting and blocking in the feed.",
+        "promoText": "Snap a selfie. Get a score. Leave with a story.",
+        "privacyPolicyUrl": "REPLACE_WITH_PRIVACY_URL",
+        "supportUrl": "REPLACE_WITH_SUPPORT_URL"
+      }
+    },
+    "categories": ["ENTERTAINMENT", "PHOTO_AND_VIDEO"],
+    "copyright": "2026 Jack Mielke",
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE"
+    }
+  }
+}
