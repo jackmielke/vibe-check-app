@@ -32,8 +32,8 @@
     "build:ios": "eas build --platform ios --profile production",
     "build:dev": "eas build --platform ios --profile development",
     "submit:ios": "eas submit --platform ios --latest",
-    "update:prod": "eas update --branch production --environment production",
-    "update:preview": "eas update --branch preview --environment preview"
+    "update:prod": "eas update --branch production",
+    "update:preview": "eas update --branch preview"
   },
   "private": true
 }
