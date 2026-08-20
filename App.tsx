@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -20,7 +20,8 @@ import { Syne_800ExtraBold } from '@expo-google-fonts/syne/800ExtraBold';
 import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif/400Regular_Italic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Atmosphere } from './src/components/Atmosphere';
-import { colors } from './src/theme';
+import { ThemeProvider, useTheme } from './src/themes/ThemeContext';
+import { themeOrder, themes, type Theme } from './src/themes';
 import { analyzingLines } from './src/vibe/copy';
 import { analyzeVibeAsync } from './src/vibe/engine';
 import type { VibeResult } from './src/vibe/types';
@@ -44,7 +45,33 @@ const shareLabels: Record<ShareState, string> = {
   failed: 'Couldn’t share — try again',
 };
 
+/** Each theme gets its own voice for the same moments. */
+const tagline: Record<string, string> = {
+  field: 'Snap a selfie. Get a score. Leave with a story.',
+  real: 'One selfie. One score. No filter.',
+  neo: 'Take a selfie and let the light do the judging.',
+  meme: 'take selfie. get judged. cope.',
+};
+
+const scoreCaption: Record<string, string> = {
+  field: 'out of 100',
+  real: 'out of 100',
+  neo: 'out of 100',
+  meme: '/100 lmao',
+};
+
 export default function App() {
+  return (
+    <ThemeProvider>
+      <VibeApp />
+    </ThemeProvider>
+  );
+}
+
+function VibeApp() {
+  const { theme, themeId, setThemeId } = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   const [screen, setScreen] = useState<Screen>('home');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [result, setResult] = useState<VibeResult | null>(null);
@@ -215,42 +242,54 @@ export default function App() {
     return <View style={styles.boot} />;
   }
 
+  const switcher = (
+    <ThemeSwitcher
+      styles={styles}
+      activeId={themeId}
+      onPick={(id) => {
+        Haptics.selectionAsync();
+        setThemeId(id);
+      }}
+    />
+  );
+
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style={theme.id === 'neo' || theme.id === 'meme' ? 'dark' : 'light'} />
       <Atmosphere intensity={screen === 'result' ? 0.75 : 1} />
 
       {photoUri && screen !== 'home' ? (
         <Image
           source={{ uri: photoUri }}
-          style={styles.photoWash}
+          style={[styles.photoWash, { opacity: theme.photoWash }]}
           contentFit="cover"
           blurRadius={screen === 'analyzing' ? 18 : 10}
         />
       ) : null}
-      {photoUri && screen !== 'home' ? <View style={styles.photoScrim} /> : null}
+      {photoUri && screen !== 'home' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.photoScrim }]} />
+      ) : null}
 
       <SafeAreaView style={styles.safe}>
         {screen === 'home' && (
           <View style={styles.hero}>
             <Animated.View
-              style={{
-                opacity: brandOpacity,
-                transform: [{ translateY: brandY }],
-              }}
+              style={{ opacity: brandOpacity, transform: [{ translateY: brandY }] }}
             >
               <Text style={styles.brand}>VIBE</Text>
             </Animated.View>
 
             <Animated.Text style={[styles.line, { opacity: contentOpacity }]}>
-              Snap a selfie. Get a score. Leave with a story.
+              {tagline[theme.id]}
             </Animated.Text>
 
             <Animated.View style={[styles.actions, { opacity: contentOpacity }]}>
-              <UnderlineButton label="Take a selfie" onPress={takeSelfie} />
-              <UnderlineButton label="Choose a photo" onPress={choosePhoto} muted />
-              <UnderlineButton label="See the feed" onPress={openFeed} muted />
+              <ThemedButton styles={styles} label="Take a selfie" onPress={takeSelfie} />
+              <ThemedButton styles={styles} label="Choose a photo" onPress={choosePhoto} muted />
+              <ThemedButton styles={styles} label="See the feed" onPress={openFeed} muted />
             </Animated.View>
+
+            <Animated.View style={{ opacity: contentOpacity }}>{switcher}</Animated.View>
           </View>
         )}
 
@@ -262,7 +301,10 @@ export default function App() {
         )}
 
         {screen === 'result' && result && (
-          <View style={styles.result}>
+          <ScrollView
+            contentContainerStyle={styles.resultScroll}
+            showsVerticalScrollIndicator={false}
+          >
             <Text style={styles.brandSmall}>VIBE</Text>
 
             <Animated.View
@@ -273,7 +315,7 @@ export default function App() {
               }}
             >
               <Text style={styles.score}>{result.score}</Text>
-              <Text style={styles.scoreHint}>out of 100</Text>
+              <Text style={styles.scoreHint}>{scoreCaption[theme.id]}</Text>
             </Animated.View>
 
             <Text style={styles.analysis}>{result.analysis}</Text>
@@ -283,24 +325,25 @@ export default function App() {
                 <View key={f.label} style={styles.factorRow}>
                   <Text style={styles.factorLabel}>{f.label}</Text>
                   <View style={styles.track}>
-                    <View
-                      style={[styles.fill, { width: `${Math.round(f.value * 100)}%` }]}
-                    />
+                    <View style={[styles.fill, { width: `${Math.round(f.value * 100)}%` }]} />
                   </View>
                 </View>
               ))}
             </View>
 
             <View style={styles.resultActions}>
-              <UnderlineButton
+              <ThemedButton
+                styles={styles}
                 label={shareLabels[shareState]}
                 onPress={share}
                 muted={shareState !== 'idle' && shareState !== 'failed'}
               />
-              <UnderlineButton label="See the feed" onPress={openFeed} muted />
-              <UnderlineButton label="Check again" onPress={reset} muted />
+              <ThemedButton styles={styles} label="See the feed" onPress={openFeed} muted />
+              <ThemedButton styles={styles} label="Check again" onPress={reset} muted />
             </View>
-          </View>
+
+            {switcher}
+          </ScrollView>
         )}
 
         {screen === 'feed' && (
@@ -313,18 +356,12 @@ export default function App() {
               contentContainerStyle={styles.feedListContent}
               showsVerticalScrollIndicator={false}
             >
-              {feedLoading && (
-                <Text style={styles.feedEmpty}>Reading the room…</Text>
-              )}
+              {feedLoading && <Text style={styles.feedEmpty}>Reading the room…</Text>}
               {!feedLoading && feed === null && (
-                <Text style={styles.feedEmpty}>
-                  The feed isn’t reachable right now.
-                </Text>
+                <Text style={styles.feedEmpty}>The feed isn’t reachable right now.</Text>
               )}
               {!feedLoading && feed !== null && feed.length === 0 && (
-                <Text style={styles.feedEmpty}>
-                  Nothing here yet. Share the first vibe.
-                </Text>
+                <Text style={styles.feedEmpty}>Nothing here yet. Share the first vibe.</Text>
               )}
               {!feedLoading &&
                 feed?.map((item) => (
@@ -332,8 +369,7 @@ export default function App() {
                     <Text style={styles.feedScore}>{item.score}</Text>
                     <View style={styles.feedBody}>
                       <Text style={styles.feedMeta}>
-                        {item.mine ? 'you' : item.displayName} ·{' '}
-                        {timeAgo(item.createdAt)}
+                        {item.mine ? 'you' : item.displayName} · {timeAgo(item.createdAt)}
                       </Text>
                       <Text style={styles.feedAnalysis}>{item.analysis}</Text>
                     </View>
@@ -341,7 +377,8 @@ export default function App() {
                 ))}
             </ScrollView>
 
-            <UnderlineButton
+            <ThemedButton
+              styles={styles}
               label={result ? 'Back to result' : 'Back'}
               onPress={closeFeed}
             />
@@ -352,11 +389,47 @@ export default function App() {
   );
 }
 
-function UnderlineButton({
+type Styles = ReturnType<typeof makeStyles>;
+
+function ThemeSwitcher({
+  styles,
+  activeId,
+  onPick,
+}: {
+  styles: Styles;
+  activeId: string;
+  onPick: (id: (typeof themeOrder)[number]) => void;
+}) {
+  return (
+    <View style={styles.switcher}>
+      {themeOrder.map((id) => {
+        const active = id === activeId;
+        return (
+          <Pressable
+            key={id}
+            onPress={() => onPick(id)}
+            style={[styles.swatch, active && styles.swatchActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={`${themes[id].name} theme`}
+          >
+            <Text style={[styles.swatchText, active && styles.swatchTextActive]}>
+              {themes[id].name}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function ThemedButton({
+  styles,
   label,
   onPress,
   muted = false,
 }: {
+  styles: Styles;
   label: string;
   onPress: () => void;
   muted?: boolean;
@@ -364,7 +437,8 @@ function UnderlineButton({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.cta, muted && styles.ctaMutedBox, pressed && styles.ctaPressed]}
     >
       <Text style={[styles.ctaText, muted && styles.ctaMuted]}>{label}</Text>
       <View style={[styles.ctaRule, muted && styles.ctaRuleMuted]} />
@@ -372,209 +446,200 @@ function UnderlineButton({
   );
 }
 
-const styles = StyleSheet.create({
-  boot: {
-    flex: 1,
-    backgroundColor: colors.deep,
-  },
-  root: {
-    flex: 1,
-    backgroundColor: colors.deep,
-  },
-  photoWash: {
-    ...StyleSheet.absoluteFill,
-    opacity: 0.35,
-  },
-  photoScrim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(22,58,53,0.55)',
-  },
-  safe: {
-    flex: 1,
-  },
-  hero: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 28,
-    paddingBottom: 48,
-    gap: 22,
-  },
-  brand: {
-    fontFamily: 'Syne_800ExtraBold',
-    fontSize: 72,
-    letterSpacing: -2.5,
-    color: colors.cream,
-    lineHeight: 72,
-  },
-  brandSmall: {
-    fontFamily: 'Syne_800ExtraBold',
-    fontSize: 22,
-    letterSpacing: 2,
-    color: colors.cream,
-    marginBottom: 8,
-  },
-  line: {
-    fontFamily: 'InstrumentSerif_400Regular_Italic',
-    fontSize: 26,
-    lineHeight: 34,
-    color: colors.creamSoft,
-    maxWidth: 320,
-  },
-  actions: {
-    marginTop: 10,
-    gap: 22,
-  },
-  centerStage: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 28,
-    paddingBottom: 64,
-    gap: 18,
-  },
-  analyzeLine: {
-    fontFamily: 'InstrumentSerif_400Regular_Italic',
-    fontSize: 28,
-    lineHeight: 36,
-    color: colors.cream,
-    maxWidth: 300,
-  },
-  result: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 28,
-    paddingBottom: 48,
-    gap: 18,
-  },
-  score: {
-    fontFamily: 'Syne_800ExtraBold',
-    fontSize: 96,
-    letterSpacing: -4,
-    color: colors.cream,
-    lineHeight: 96,
-  },
-  scoreHint: {
-    fontFamily: 'Syne_700Bold',
-    fontSize: 12,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: colors.creamMuted,
-    marginTop: 4,
-  },
-  analysis: {
-    fontFamily: 'InstrumentSerif_400Regular_Italic',
-    fontSize: 22,
-    lineHeight: 30,
-    color: colors.creamSoft,
-    maxWidth: 340,
-  },
-  factors: {
-    gap: 12,
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  factorRow: {
-    gap: 6,
-  },
-  factorLabel: {
-    fontFamily: 'Syne_700Bold',
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase',
-    color: colors.creamMuted,
-  },
-  track: {
-    height: 2,
-    backgroundColor: 'rgba(244,239,230,0.22)',
-    width: '100%',
-  },
-  fill: {
-    height: 2,
-    backgroundColor: colors.cream,
-  },
-  resultActions: {
-    gap: 14,
-  },
-  feed: {
-    flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 18,
-    paddingBottom: 40,
-    gap: 10,
-  },
-  feedTitle: {
-    fontFamily: 'InstrumentSerif_400Regular_Italic',
-    fontSize: 30,
-    color: colors.cream,
-    marginBottom: 6,
-  },
-  feedList: {
-    flex: 1,
-  },
-  feedListContent: {
-    gap: 22,
-    paddingBottom: 24,
-  },
-  feedEmpty: {
-    fontFamily: 'InstrumentSerif_400Regular_Italic',
-    fontSize: 20,
-    lineHeight: 28,
-    color: colors.creamMuted,
-    marginTop: 12,
-  },
-  feedRow: {
-    flexDirection: 'row',
-    gap: 16,
-    alignItems: 'flex-start',
-  },
-  feedScore: {
-    fontFamily: 'Syne_800ExtraBold',
-    fontSize: 34,
-    lineHeight: 38,
-    color: colors.cream,
-    minWidth: 54,
-  },
-  feedBody: {
-    flex: 1,
-    gap: 4,
-    paddingTop: 2,
-  },
-  feedMeta: {
-    fontFamily: 'Syne_700Bold',
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase',
-    color: colors.creamMuted,
-  },
-  feedAnalysis: {
-    fontFamily: 'InstrumentSerif_400Regular_Italic',
-    fontSize: 17,
-    lineHeight: 23,
-    color: colors.creamSoft,
-  },
-  cta: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-  },
-  ctaPressed: {
-    opacity: 0.7,
-  },
-  ctaText: {
-    fontFamily: 'Syne_700Bold',
-    fontSize: 15,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: colors.cream,
-  },
-  ctaMuted: {
-    color: colors.creamMuted,
-  },
-  ctaRule: {
-    marginTop: 10,
-    height: 1.5,
-    width: '100%',
-    backgroundColor: colors.cream,
-  },
-  ctaRuleMuted: {
-    backgroundColor: colors.creamMuted,
-  },
-});
+function makeStyles(theme: Theme) {
+  // Neumorphism reads as light from the top-left, so surfaces get a soft
+  // drop shadow plus a white edge instead of a border.
+  const raised = theme.raised
+    ? {
+        backgroundColor: theme.card,
+        borderRadius: theme.radius,
+        borderWidth: 1,
+        borderColor: theme.cardBorder,
+        shadowColor: '#A3B1C6',
+        shadowOffset: { width: 6, height: 6 },
+        shadowOpacity: 0.55,
+        shadowRadius: 10,
+      }
+    : null;
+
+  // Only the meme theme wants a hard poster outline.
+  const outlined =
+    theme.id === 'meme'
+      ? {
+          backgroundColor: theme.card,
+          borderRadius: theme.radius,
+          borderWidth: 3,
+          borderColor: theme.cardBorder,
+        }
+      : null;
+
+  const boxed =
+    theme.id === 'real'
+      ? {
+          backgroundColor: theme.card,
+          borderRadius: theme.radius,
+          borderWidth: 1,
+          borderColor: theme.cardBorder,
+        }
+      : null;
+
+  const ctaBox = raised ?? outlined ?? boxed;
+  const ctaPadding = ctaBox ? { paddingVertical: 14, paddingHorizontal: 20 } : { paddingVertical: 8 };
+
+  return StyleSheet.create({
+    boot: { flex: 1, backgroundColor: theme.bg },
+    root: { flex: 1, backgroundColor: theme.bg },
+    photoWash: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+    safe: { flex: 1 },
+
+    hero: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      paddingHorizontal: 28,
+      paddingBottom: 40,
+      gap: 20,
+    },
+    brand: {
+      ...theme.display,
+      fontSize: 72 * theme.displayScale,
+      color: theme.text,
+      lineHeight: 76 * theme.displayScale,
+    },
+    brandSmall: {
+      ...theme.label,
+      fontSize: 22,
+      letterSpacing: 2,
+      color: theme.text,
+      marginBottom: 8,
+    },
+    line: {
+      ...theme.body,
+      fontSize: 26,
+      lineHeight: 34,
+      color: theme.textSoft,
+      maxWidth: 320,
+    },
+    actions: { marginTop: 6, gap: ctaBox ? 12 : 22 },
+
+    centerStage: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      paddingHorizontal: 28,
+      paddingBottom: 64,
+      gap: 18,
+    },
+    analyzeLine: {
+      ...theme.body,
+      fontSize: 28,
+      lineHeight: 36,
+      color: theme.text,
+      maxWidth: 300,
+    },
+
+    resultScroll: {
+      flexGrow: 1,
+      justifyContent: 'flex-end',
+      paddingHorizontal: 28,
+      paddingTop: 24,
+      paddingBottom: 40,
+      gap: 16,
+    },
+    score: {
+      ...theme.display,
+      fontSize: 96 * theme.displayScale,
+      color: theme.text,
+      lineHeight: 100 * theme.displayScale,
+    },
+    scoreHint: {
+      ...theme.label,
+      fontSize: 12,
+      color: theme.textMuted,
+      marginTop: 4,
+    },
+    analysis: {
+      ...theme.body,
+      fontSize: 22,
+      lineHeight: 30,
+      color: theme.textSoft,
+      maxWidth: 340,
+    },
+    factors: { gap: 12, marginTop: 6, marginBottom: 8 },
+    factorRow: { gap: 6 },
+    factorLabel: { ...theme.label, fontSize: 11, color: theme.textMuted },
+    track: {
+      height: theme.id === 'meme' ? 10 : 2,
+      backgroundColor: theme.id === 'neo' ? '#CDD5E0' : `${theme.text}33`,
+      width: '100%',
+      borderRadius: theme.id === 'meme' ? 0 : 999,
+      borderWidth: theme.id === 'meme' ? 2 : 0,
+      borderColor: theme.cardBorder,
+      overflow: 'hidden',
+    },
+    fill: {
+      height: '100%',
+      backgroundColor: theme.id === 'field' ? theme.text : theme.accent,
+    },
+    resultActions: { gap: ctaBox ? 12 : 14, marginTop: 4 },
+
+    feed: {
+      flex: 1,
+      paddingHorizontal: 28,
+      paddingTop: 18,
+      paddingBottom: 32,
+      gap: 10,
+    },
+    feedTitle: { ...theme.body, fontSize: 30, color: theme.text, marginBottom: 6 },
+    feedList: { flex: 1 },
+    feedListContent: { gap: 22, paddingBottom: 24 },
+    feedEmpty: {
+      ...theme.body,
+      fontSize: 20,
+      lineHeight: 28,
+      color: theme.textMuted,
+      marginTop: 12,
+    },
+    feedRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+    feedScore: {
+      ...theme.display,
+      fontSize: 34,
+      lineHeight: 38,
+      letterSpacing: -1,
+      color: theme.text,
+      minWidth: 54,
+    },
+    feedBody: { flex: 1, gap: 4, paddingTop: 2 },
+    feedMeta: { ...theme.label, fontSize: 11, color: theme.textMuted },
+    feedAnalysis: { ...theme.body, fontSize: 17, lineHeight: 23, color: theme.textSoft },
+
+    cta: {
+      alignSelf: 'flex-start',
+      ...ctaPadding,
+      ...(ctaBox ?? {}),
+    },
+    ctaMutedBox: theme.raised
+      ? { shadowOpacity: 0.3 }
+      : theme.id === 'meme'
+        ? { backgroundColor: 'transparent' }
+        : {},
+    ctaPressed: { opacity: 0.7 },
+    ctaText: { ...theme.label, fontSize: 15, color: theme.id === 'meme' ? theme.onAccent : theme.text },
+    ctaMuted: { color: theme.textMuted },
+    // Only the underline look needs a rule; boxed themes draw their own edge.
+    ctaRule: ctaBox
+      ? { height: 0 }
+      : { marginTop: 10, height: 1.5, width: '100%', backgroundColor: theme.text },
+    ctaRuleMuted: ctaBox ? { height: 0 } : { backgroundColor: theme.textMuted },
+
+    switcher: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
+    swatch: {
+      paddingVertical: 7,
+      paddingHorizontal: 13,
+      borderRadius: theme.raised ? 14 : 999,
+      borderWidth: 1,
+      borderColor: `${theme.text}33`,
+    },
+    swatchActive: { backgroundColor: theme.accent, borderColor: theme.accent },
+    swatchText: { ...theme.label, fontSize: 10, color: theme.textMuted },
+    swatchTextActive: { color: theme.onAccent },
+  });
+}
